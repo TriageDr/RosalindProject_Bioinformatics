@@ -30,10 +30,8 @@
 
 |#
 
-;; define input file 
 (define in (open-input-file "../001_BA1b_FrequentWordsProblem/rosalind_ba1b.txt"))
 
-;; function reads in character list from input file 
 (define port->list/read-char
   (lambda (port)
     (let ((next-char (read-char port)))
@@ -41,15 +39,9 @@
 	  '()
 	  (cons next-char
 		(port->list/read-char port))))))
-
-;; raw character list of input file
 (define ba1b-r
   (port->list/read-char in))
 
-;;close input port
-(close-input-port in)
-
-;; function extracts kmer-length from txt file input
 (define kmer-length-finder
   (lambda (ls els)
     (cond
@@ -59,14 +51,12 @@
        (kmer-length-finder (cdr ls)
 		       (cons (car ls) els))))))
 
-;; variable hold the kmer length 
-;; remove-all function, from prelude folder,
-;; removes #\newline character from input list
-
 (define ba1b-kmer-length
-  (list->string (remove-all #\newline (cdr (kmer-length-finder ba1b-r '())))))
+  (string->number
+   (list->string
+    (remove-all #\newline
+		(cdr (kmer-length-finder ba1b-r '()))))))
 
-;; variable holds the sequence list
 (define ba1b-sequence
   (car (kmer-length-finder ba1b-r '())))
 
@@ -84,128 +74,6 @@
 	  (else 
 	   (error 'lookup (format "~s is not a DNA nucleotide" ls)))))))
 
-#|  
-
-  Helper Functions: sequence-for-kmer  
-  _______________________________________________________________________
-
-  Contract: 
-  sequence-for-kmer is a function that takes two arguements, 
-  the list of nucleotides (ls) and the kmer-length (n) and returns 
-  a list that is the (kmer-length - 1) nucleotides shorter. 
-  
-  Logic/Strategy: 
-  In order to evaluate all of the possible kmers of length (n) 
-  that exist within list of nucleotides, we must first remove (n - 1)
-  nucleotides from the end of the list. 
-
-  If the kmer-length were 14, then we must remove (14 - 1) = 13 
-  nucleotides from the end of the list. In doing so, we ensure that 
-  the list can be iterated through by kmers of length 14 
-  (aka 14-mers). 
- 
-  Said differently, when a recursive function whose job is to grab 
-  every 14-mer is exactly 14 nucleotides away from the end of the 
-  list, we know that it will grab the final possible 14mer and hit 
-  the end of the list -- which hopefully the recursive function's 
-  termination case (aka base case). 
-
-  But what if we didn't shave the list down? Well, with the function 
-  we're proposing, we would likely hit an error. After the last 14mer
-  is found, there will only 13 nucleotides (a 13mer) left in the list. 
-  This by definition cannot me a 14mer, and by the contract of the 
-  problem we're focused on the most common kmer where the kmer length 
-  is given to us in the original txt data file. Indeed, a different 
-  function with the logic for handling the case where the remaining 
-  list is less than the desired kmer length can be (and 
-  will be written) later. For now lets start with the kmerized sequence. 
-
-  sequence-for-kmer input:     list of nucleotide-chars      kmer length         
-  bound-variables:             (ls)                          (n)
-  variable names:              ba1b-sequence
-
-  output:                      
-
-  Case Analysis Tests: 
-  _______________________________________________________________________
- 
-  Using the macro check-equal? 
-  to test Cases #1-4
-
-  _______________________________________________________________________
-
-|# 
-
-#| 
-   ---- Helper Function: sequence-for-kmer ---- 
-
-   returns a list 14mer-sequence that has 13 less
-   nucleotides than the raw list 
-|# 
-
-;; return a list that will be used by next helpers
-(define sequence-for-kmer/h
-  (lambda (ls kmer els)
-    (cond
-      ((< (length ls) kmer)
-       (reverse els))
-      (else
-       (sequence-for-kmer/h (cdr ls) kmer
-			    (cons (car ls) els))))))
-
-(define sequence-for-kmer
-  (lambda (ls) 
-    (sequence-for-kmer/h ls 14 '())))
-
-(define 14mer-sequence
-  (sequence-for-kmer ba1b-sequence))
-
-#|   
-   ---- Helper Function: get-all-kmers ---- 
-  
-  returns a nested list of all kmers with 
-  the value of their occurences within 
-  the kmer list at the head of the list 
-  
- |#
-
-(define length-is-n?/h
-  (lambda (ls acc n)
-    (cond
-      ((null? ls) #f)
-      ((eq? acc n) #t)
-      (else
-       (length-is-n?/h (cdr ls) (add1 acc) n)))))
-
-;; determines if length of a ls is a certain value
-(define length-is-n?
-  (lambda (ls n)
-    (length-is-n?/h ls 1 n)))
-
-;; determines if ls length is 14
-(define length-is-14mer?
-  (lambda (ls)
-    (length-is-n?/h ls 1 14)))
-
-;; returns els with 14 nucleotides on it 
-(define get-kmer
-  (lambda (ls els)
-    (if (length-is-14mer? els)
-	(reverse els)
-	(get-kmer (cdr ls)
-		  (cons (car ls) els)))))
-
-(define get-all-kmers
-  (lambda (ls)
-    (cond
-      ((<= (length ls) 13) '())
-      (else 
-       (cons (get-kmer ls '())
-	     (get-all-kmers (cdr ls)))))))
-
-(define 14mer-ls
-  (get-all-kmers ba1b-sequence)) 
-
 (define occurs
   (lambda (s ls)
     (cond
@@ -215,52 +83,102 @@
       (else
        (occurs s (cdr ls))))))
 
-(define s-member?
-  (lambda (s ls)
+
+(define length-is-k?/h
+  (lambda (ls acc k)
     (cond
       ((null? ls) #f)
+      ((= acc k) #t)
       (else
-       (or (s-member? s (cdr ls))
-	   (equal? s (car ls)))))))
+       (length-is-k?/h (cdr ls) (add1 acc) k)))))
 
-(define most-common-kmer
+(define length-is-kmer?
+  (lambda (ls)
+    (length-is-k?/h ls 1 ba1b-kmer-length)))
+
+;; returns els with kmer length of nucleotides on it 
+(define get-kmer
+  (lambda (ls els)
+    (if (length-is-kmer? els)
+	(reverse els)
+	(get-kmer (cdr ls)
+		  (cons (car ls) els)))))
+
+(define get-all-kmers
+  (lambda (ls k)
+    (cond
+      ((< (length ls) k) '())
+      (else 
+       (cons (get-kmer ls '())
+	     (get-all-kmers (cdr ls) k))))))
+
+(define kmer-ls
+  (get-all-kmers ba1b-sequence ba1b-kmer-length)) 
+
+(define make-kmer-assoc-ls
   (lambda (ls)
     (cond
       ((null? ls) '())
-      ((s-member? (car ls) (cdr ls))
-       (cons 
-	(cons (occurs (car ls) ls)
-	      (car ls))
-	(most-common-kmer (cdr ls))))
       (else
-       (most-common-kmer (cdr ls))))))
+       (cons
+	(cons (car ls) (occurs (car ls) ls))
+	(make-kmer-assoc-ls (cdr ls)))))))
 
-;; shows values of copies 
-(define most-common-kmer-ls
-  (most-common-kmer 14mer-ls))
+(define kmer-assoc-ls
+  (make-kmer-assoc-ls kmer-ls))
 
+;; use Chez Scheme's built in sort
+;; problem here -- the output gives you all 8 copies of each kmer
+;; you need to count the copy number but not cons the copy each time
 
+(define kmer-assoc-ls/sorted
+  (sort (lambda (ls1 ls2)
+	  (> (cdr ls1) (cdr ls2))) kmer-assoc-ls))
 
+;; note that sort assumes the car of the list to start 
 
-#!eof
-#|
- 
-  Function: 
-  _______________________________________________________________________
+;;takes an association list with structure as follows 
+;; (((#\G #\C #\G #\A #\G #\G #\G #\A #\C #\A #\T #\G #\T #\A)
+;;   .
+;;   8) ....)
 
+(define kmer-repeat-value
+  (cdar kmer-assoc-ls/sorted))
 
-  Final Answer: 
-|#
+;;returns list of pairs (kmer . repeat)
+(define get-most-common-kmers/pair
+  (lambda (x ls)
+    (cond
+      ((null? ls) '())
+      ((eqv? x (cdar ls))
+       (cons (car ls)
+	     (get-most-common-kmers/pair x (cdr ls))))
+      (else
+       (get-most-common-kmers/pair x (cdr ls))))))
 
+;; returns a list with most common kmers 
+(define get-most-common-kmers
+  (lambda (x ls)
+    (cond
+      ((null? ls) '())
+      ((eqv? x (cdar ls))
+       (cons (list->string (caar ls))
+	     (get-most-common-kmers x (cdr ls))))
+      (else
+       (get-most-common-kmers x (cdr ls))))))
 
-#| ---- Function:  ---- |# 
+;; specific for 8 repeat of the 14mer-assoc-ls
+;; kmer-repeat-value holds the highest number of repeats
+(define most-common-kmers
+  (lambda (ls)
+    (get-most-common-kmers kmer-repeat-value ls)))
 
-#| ---- Function: /pmatch ----
+;;outputs the strings of each most common kmer
+(define most-common-kmers-ls
+  (most-common-kmers kmer-assoc-ls))
 
-  _______________________________________________________________________
+(display (format "The most common kmer(s) listed below had ~s repeats. \n" kmer-repeat-value))
+(newline)
+(display (format "Most Common Kmers: ~s. \n" most-common-kmers-ls))
 
-  Final Answer:   
-
-|#
-
-
+#!eof 
